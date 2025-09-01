@@ -38,10 +38,21 @@ VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
 2. **Firebase Config**: Follow the [Firebase Setup Guide](FIREBASE_SETUP.md)
 
 ### 4. Install & Start
+
+#### Option 1: Simple Script (Recommended)
+```bash
+# Install Python dependencies first
+pip install -r requirements.txt
+
+# Run everything with one command
+python run.py
+```
+
+#### Option 2: Manual (Separate Terminals)
 ```bash
 # Backend
 pip install -r requirements.txt
-python -m backend.api.main
+uvicorn backend.api.main:app --host 127.0.0.1 --port 8000 --reload
 
 # Frontend (new terminal)
 cd frontend
@@ -49,12 +60,17 @@ npm install
 npm run dev
 ```
 
+#### Option 3: Windows Double-Click
+Simply double-click `run.bat` to start the project.
+
 ##  Project Structure
 ```
 AI Tutor agent/
 ├── .env                    # Backend environment variables
 ├── frontend/.env          # Frontend environment variables
 ├── requirements.txt       # Python dependencies
+├── run.py                 # Simple project runner
+├── run.bat               # Windows batch file
 ├── backend/              # FastAPI backend
 ├── frontend/            # React frontend
 ├── test_documents/      # Your test files

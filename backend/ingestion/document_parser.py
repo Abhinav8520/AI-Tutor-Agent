@@ -224,7 +224,14 @@ class DocumentParser:
         
         if file_extension == '.pdf':
             return self.parse_pdf(file_path)
-        elif file_extension in ['.pptx', '.ppt']:
+        elif file_extension == '.pptx':
+            return self.parse_powerpoint(file_path)
+        elif file_extension == '.ppt':
+            if not PPT_SUPPORT:
+                raise ValueError(
+                    f".ppt files are not supported on this platform. "
+                    f"Please convert your .ppt file to .pptx format before uploading."
+                )
             return self.parse_powerpoint(file_path)
         else:
             raise ValueError(f"Unsupported file format: {file_extension}") 
