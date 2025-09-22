@@ -1,5 +1,7 @@
 # AI Study Tutor - Setup Guide
 
+AI Study Tutor is a lightweight study assistant that lets you upload PDFs and slide decks, builds a searchable knowledge base with embeddings, and helps you learn using RAG-powered Q&A and auto-generated quizzes. It includes a FastAPI backend, a React/Vite frontend, and optional Firebase-based progress tracking.
+
 ##  Quick Setup
 
 ### 1. Backend Setup
