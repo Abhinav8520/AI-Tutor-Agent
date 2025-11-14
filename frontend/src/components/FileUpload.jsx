@@ -63,7 +63,7 @@ const FileUpload = ({ onUpload, isUploading = false }) => {
 
   return (
     <div className="card">
-      <h2>📤 Upload Study Materials</h2>
+      <h2>Upload Study Materials</h2>
       
       <div
         className={`upload-area ${dragActive ? 'dragover' : ''}`}
@@ -72,7 +72,7 @@ const FileUpload = ({ onUpload, isUploading = false }) => {
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <div className="upload-icon">📄</div>
+        <div className="upload-icon">File</div>
         <p>
           Drag and drop your files here, or{' '}
           <span
@@ -113,7 +113,7 @@ const FileUpload = ({ onUpload, isUploading = false }) => {
               color: '#999'
             }}
           >
-            ✕
+            X
           </button>
         </div>
       )}

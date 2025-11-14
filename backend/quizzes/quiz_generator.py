@@ -1,18 +1,38 @@
+"""
+LangChain-based Quiz Generator.
+
+Uses LangChain's ChatOpenAI for structured quiz generation.
+"""
+
 import os
+import json
+import re
 from typing import List, Dict, Any
+from langchain_openai import ChatOpenAI
 from backend.config import settings
-from backend.tutoring.openai_tutor import OpenAITutor
+
 
 class QuizGenerator:
-    """Simple quiz generator that creates 5 basic questions from document content."""
+    """LangChain-based quiz generator that creates 5 questions from document content."""
     
     def __init__(self, api_key: str = None):
-        """Initialize the quiz generator."""
+        """
+        Initialize the quiz generator.
+        
+        Args:
+            api_key: OpenAI API key. If None, uses settings or environment variable.
+        """
         self.api_key = api_key or settings.openai_api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key is required for quiz generation.")
         
-        self.openai_tutor = OpenAITutor(self.api_key)
+        # Initialize LangChain ChatOpenAI
+        self.llm = ChatOpenAI(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+            max_tokens=1500,
+            openai_api_key=self.api_key
+        )
     
     def generate_quiz(self, context_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate a simple 5-question quiz from document chunks."""
@@ -48,24 +68,25 @@ class QuizGenerator:
         return "\n\n".join(context_parts)
     
     def _generate_quiz_with_openai(self, context: str) -> Dict[str, Any]:
-        """Generate quiz using OpenAI API."""
+        """Generate quiz using LangChain ChatOpenAI."""
         
-        # Create simple prompt for quiz generation
+        # Create prompt for quiz generation
         prompt = self._create_quiz_prompt(context)
         
         try:
-            response = self.openai_tutor.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a simple quiz generator that creates 5 basic multiple choice questions."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=1500,
-                temperature=0.7,
-                top_p=0.9
-            )
+            # Use LangChain's invoke method with proper message format
+            try:
+                from langchain_core.messages import HumanMessage, SystemMessage
+            except ImportError:
+                from langchain.schema import HumanMessage, SystemMessage
             
-            quiz_text = response.choices[0].message.content.strip()
+            messages = [
+                SystemMessage(content="You are a simple quiz generator that creates 5 basic multiple choice questions."),
+                HumanMessage(content=prompt)
+            ]
+            
+            response = self.llm.invoke(messages)
+            quiz_text = response.content.strip()
             
             # Parse the quiz response
             quiz_data = self._parse_quiz_response(quiz_text)
@@ -73,7 +94,7 @@ class QuizGenerator:
             return quiz_data
             
         except Exception as e:
-            print(f"Error in OpenAI quiz generation: {e}")
+            print(f"Error in LangChain quiz generation: {e}")
             raise
     
     def _create_quiz_prompt(self, context: str) -> str:

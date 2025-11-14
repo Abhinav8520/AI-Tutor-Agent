@@ -21,54 +21,54 @@ class SimpleRunner:
 
     def start_backend(self):
         """Start the FastAPI backend with uvicorn."""
-        print("🚀 Starting backend (uvicorn)...")
+        print("Starting backend (uvicorn)...")
         try:
             self.backend_process = subprocess.Popen(
                 ["uvicorn", "backend.api.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
                 cwd=self.project_root
             )
-            print("✅ Backend started on http://127.0.0.1:8000")
+            print("Backend started on http://127.0.0.1:8000")
             return True
         except Exception as e:
-            print(f"❌ Failed to start backend: {e}")
+            print(f"Failed to start backend: {e}")
             return False
 
     def start_frontend(self):
         """Start the React frontend with npm run dev."""
-        print("🚀 Starting frontend (npm run dev)...")
+        print("Starting frontend (npm run dev)...")
         try:
             self.frontend_process = subprocess.Popen(
                 ["C:\\Program Files\\nodejs\\npm.cmd", "run", "dev"],
                 cwd=self.frontend_dir
             )
-            print("✅ Frontend started on http://localhost:5173")
+            print("Frontend started on http://localhost:5173")
             return True
         except Exception as e:
-            print(f"❌ Failed to start frontend: {e}")
+            print(f"Failed to start frontend: {e}")
             return False
 
     def stop_all(self):
         """Stop all running processes."""
-        print("\n🛑 Stopping all services...")
+        print("\nStopping all services...")
         self.running = False
         
         if self.backend_process:
             self.backend_process.terminate()
-            print("✅ Backend stopped")
+            print("Backend stopped")
         
         if self.frontend_process:
             self.frontend_process.terminate()
-            print("✅ Frontend stopped")
+            print("Frontend stopped")
 
     def signal_handler(self, signum, frame):
         """Handle interrupt signals."""
-        print(f"\n🛑 Received signal {signum}, shutting down...")
+        print(f"\nReceived signal {signum}, shutting down...")
         self.stop_all()
         sys.exit(0)
 
     def run(self):
         """Main run method."""
-        print("🎓 AI Study Tutor - Simple Runner")
+        print("AI Study Tutor - Simple Runner")
         print("=" * 40)
         
         # Set up signal handlers
@@ -87,10 +87,10 @@ class SimpleRunner:
             self.stop_all()
             sys.exit(1)
         
-        print("\n🎉 Project is running!")
-        print("📱 Frontend: http://localhost:5173")
-        print("🔧 Backend API: http://127.0.0.1:8000")
-        print("📚 API Docs: http://127.0.0.1:8000/docs")
+        print("\nProject is running!")
+        print("Frontend: http://localhost:5173")
+        print("Backend API: http://127.0.0.1:8000")
+        print("API Docs: http://127.0.0.1:8000/docs")
         print("\nPress Ctrl+C to stop all services")
         
         # Keep the main thread alive

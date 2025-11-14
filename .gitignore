@@ -58,4 +58,10 @@ yarn-error.log*
 
 # Build outputs
 frontend/dist/
-frontend/build/ 
+frontend/build/
+
+# Documentation files (keep README.md)
+AUTHENTICATION_TEST_RESULTS.md
+AWS_DEPLOYMENT.md
+DEPLOYMENT.md
+

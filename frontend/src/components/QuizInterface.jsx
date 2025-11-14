@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 
 const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, onCheckAnswer }) => {
+  const { user } = useAuth();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [answerResults, setAnswerResults] = useState({});
@@ -46,7 +48,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
     if (currentQuestion < quizData.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      // Quiz completed - save progress
+      // Quiz completed - save results
       handleQuizComplete();
     }
   };
@@ -76,12 +78,18 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
       }))
     };
 
-    // Save to Firebase
+    // Save quiz results to Firebase
     try {
-      await progressService.saveQuizResult(quizData, selectedAnswers, results);
-      console.log('Quiz progress saved successfully!');
+      if (!user || !user.uid) {
+        console.warn('User not authenticated. Quiz results will not be saved.');
+        alert('Please log in to save your quiz results.');
+        return;
+      }
+      const savedId = await progressService.saveQuizResult(quizData, selectedAnswers, results, user.uid);
+      console.log('Quiz results saved successfully to Firebase! Document ID:', savedId);
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error('Error saving quiz results:', error);
+      alert('Failed to save quiz results. Please try again.');
     }
   };
 
@@ -93,9 +101,9 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
 
   const getQuestionStatus = (index) => {
     if (answerResults[index]) {
-      return answerResults[index].is_correct ? '✅' : '❌';
+      return answerResults[index].is_correct ? '[OK]' : '[X]';
     }
-    return selectedAnswers[index] ? '⏳' : '⭕';
+    return selectedAnswers[index] ? '[...]' : '[ ]';
   };
 
   const allQuestionsAnswered = () => {
@@ -110,7 +118,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
 
   return (
     <div className="card">
-      <h2>🎯 Quiz Generator</h2>
+      <h2>Quiz Generator</h2>
       
       {/* Generate Quiz Button */}
       <div style={{ marginBottom: '20px' }}>
@@ -219,7 +227,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
                 color: answerResults[currentQuestion].is_correct ? '#155724' : '#721c24'
               }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                  {answerResults[currentQuestion].is_correct ? '✅ Correct!' : '❌ Incorrect!'}
+                  {answerResults[currentQuestion].is_correct ? 'Correct!' : 'Incorrect!'}
                 </div>
                 <div>
                   Your answer: {answerResults[currentQuestion].user_answer}
@@ -246,7 +254,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
                   opacity: currentQuestion === 0 ? 0.5 : 1
                 }}
               >
-                ← Previous
+                {'<'} Previous
               </button>
               
               <button
@@ -277,7 +285,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
                   opacity: (currentQuestion === quizData.questions.length - 1 && (!allQuestionsAnswered() || !allQuestionsChecked())) ? 0.5 : 1
                 }}
               >
-                {currentQuestion === quizData.questions.length - 1 ? 'Complete Quiz' : 'Next →'}
+                {currentQuestion === quizData.questions.length - 1 ? 'Complete Quiz' : 'Next >'}
               </button>
             </div>
 
@@ -293,9 +301,9 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
                 fontSize: '14px',
                 textAlign: 'center'
               }}>
-                {!allQuestionsAnswered() && !allQuestionsChecked() && '⚠️ Please answer and check all questions to complete the quiz'}
-                {allQuestionsAnswered() && !allQuestionsChecked() && '⚠️ Please check all answers to complete the quiz'}
-                {!allQuestionsAnswered() && allQuestionsChecked() && '⚠️ Please answer all questions to complete the quiz'}
+                {!allQuestionsAnswered() && !allQuestionsChecked() && 'Warning: Please answer and check all questions to complete the quiz'}
+                {allQuestionsAnswered() && !allQuestionsChecked() && 'Warning: Please check all answers to complete the quiz'}
+                {!allQuestionsAnswered() && allQuestionsChecked() && 'Warning: Please answer all questions to complete the quiz'}
               </div>
             )}
 
@@ -311,10 +319,10 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
                 textAlign: 'center'
               }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                  🎉 Quiz Completed!
+                  Quiz Completed!
                 </div>
                 <div>
-                  Your progress has been saved. Check the progress section below to see your results!
+                  Your quiz results have been saved to Firebase.
                 </div>
               </div>
             )}
@@ -331,7 +339,7 @@ const QuizInterface = ({ onGenerateQuiz, isGenerating = false, quizData = null, 
           padding: '16px',
           textAlign: 'center'
         }}>
-          <h4 style={{ marginBottom: '12px', color: '#0066cc' }}>🎯 Ready to Test Your Knowledge?</h4>
+          <h4 style={{ marginBottom: '12px', color: '#0066cc' }}>Ready to Test Your Knowledge?</h4>
           <p style={{ fontSize: '14px', color: '#0066cc', lineHeight: '1.6' }}>
             Upload some documents first, then click "Generate Quiz" to create 5 questions based on your study materials.
           </p>

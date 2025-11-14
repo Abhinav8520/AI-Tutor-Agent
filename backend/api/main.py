@@ -1,17 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi import Body
 import os
 import shutil
-from typing import List, Dict, Any
 import uvicorn
 
 from backend.config import settings
 from backend.ingestion.document_parser import DocumentParser
-from backend.ingestion.embedding_manager import EmbeddingManager
-from backend.tutoring.openai_tutor import OpenAITutor
-from backend.tutoring.rag_service import RAGService
+from backend.ingestion.langchain_vector_store import LangChainVectorStore
+from backend.tutoring.langchain_tutor import LangChainTutor
+from backend.tutoring.memory_manager import ConversationMemoryManager
+from backend.tutoring.rag_service import LangChainRAGService
 from backend.quizzes.quiz_generator import QuizGenerator
 
 # Initialize FastAPI app
@@ -32,18 +30,43 @@ app.add_middleware(
 
 # Initialize components
 document_parser = DocumentParser()
-embedding_manager = EmbeddingManager()
 
-# Initialize OpenAI tutor (will require API key)
+# Initialize LangChain vector store with error handling
+vector_store = None
 try:
-    llm_tutor = OpenAITutor()
-    rag_service = RAGService(embedding_manager, llm_tutor)
-    quiz_generator = QuizGenerator()
-    print("✅ OpenAI tutor and quiz generator initialized successfully")
+    print("Initializing LangChain vector store...")
+    vector_store = LangChainVectorStore()
+    print("LangChain vector store initialized successfully")
 except Exception as e:
-    print(f"⚠️  OpenAI tutor initialization failed: {e}")
+    print(f"Warning: Vector store initialization failed: {e}")
+    print("   Backend will start but document upload/search features will be limited")
+    print("   This may be due to torch/sentence-transformers compatibility issues")
+
+# Initialize LangChain tutor and memory manager (will require API key)
+llm_tutor = None
+memory_manager = None
+rag_service = None
+quiz_generator = None
+
+try:
+    # Initialize memory manager
+    memory_manager = ConversationMemoryManager()
+    
+    # Initialize LangChain tutor with memory manager
+    llm_tutor = LangChainTutor(memory_manager=memory_manager)
+    
+    # Initialize RAG service if vector store is available
+    if vector_store is not None:
+        rag_service = LangChainRAGService(vector_store, llm_tutor)
+    
+    # Initialize quiz generator
+    quiz_generator = QuizGenerator()
+    print("LangChain tutor, memory manager, and quiz generator initialized successfully")
+except Exception as e:
+    print(f"Warning: LangChain services initialization failed: {e}")
     print("   Please set OPENAI_API_KEY environment variable")
     llm_tutor = None
+    memory_manager = None
     rag_service = None
     quiz_generator = None
 
@@ -66,7 +89,9 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "documents_loaded": embedding_manager.count()
+        "documents_loaded": vector_store.count() if vector_store else 0,
+        "embedding_service_available": vector_store is not None,
+        "langchain_enabled": True
     }
 
 @app.post("/upload")
@@ -98,15 +123,20 @@ async def upload_document(file: UploadFile = File(...)):
                 detail="No content could be extracted from the document"
             )
         
-        # Add to embedding manager
-        print(f"Adding {len(chunks)} chunks to embedding manager")
-        embedding_manager.add_chunks(chunks)
+        # Add to vector store
+        if vector_store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Vector store service is not available. Please check backend logs for initialization errors."
+            )
+        print(f"Adding {len(chunks)} chunks to LangChain vector store")
+        vector_store.add_chunks(chunks)
         
         return {
             "message": "Document uploaded and processed successfully",
             "filename": file.filename,
             "chunks_processed": len(chunks),
-            "total_documents": embedding_manager.count()
+            "total_documents": vector_store.count()
         }
         
     except Exception as e:
@@ -116,8 +146,15 @@ async def upload_document(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ask")
-async def ask_question(query: str = Form(...), top_k: int = Form(5)):
-    """Ask a question and get an intelligent answer using RAG."""
+async def ask_question(query: str = Form(...), top_k: int = Form(5), user_id: str = Form(None)):
+    """
+    Ask a question and get an intelligent answer using RAG with conversation memory.
+    
+    Args:
+        query: User's question
+        top_k: Number of chunks to retrieve (default 5, but only top 3 are used)
+        user_id: Firebase user ID for conversation memory (optional)
+    """
     try:
         if not query.strip():
             raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -132,8 +169,8 @@ async def ask_question(query: str = Form(...), top_k: int = Form(5)):
                 detail="AI service is not available. Please set OPENAI_API_KEY environment variable."
             )
         
-        # Use RAG service to generate intelligent answer
-        response = rag_service.answer_question(query, top_k)
+        # Use RAG service to generate intelligent answer with conversation memory
+        response = rag_service.answer_question(query, top_k=top_k, user_id=user_id)
         
         return response
     except Exception as e:
@@ -150,16 +187,23 @@ async def generate_quiz():
                 detail="Quiz service is not available. Please set OPENAI_API_KEY environment variable."
             )
         
+        # Check if vector store is available
+        if vector_store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Vector store service is not available. Please check backend logs for initialization errors."
+            )
+        
         # Get all available chunks for quiz generation
-        total_chunks = embedding_manager.count()
+        total_chunks = vector_store.count()
         if total_chunks == 0:
             raise HTTPException(
                 status_code=400,
                 detail="No documents uploaded. Please upload documents first."
             )
         
-        # Get chunks for quiz generation
-        chunks = embedding_manager.search("", top_k=20)
+        # Get chunks for quiz generation (search with empty query to get random chunks)
+        chunks = vector_store.search("", top_k=20)
         
         # Generate quiz
         quiz_data = quiz_generator.generate_quiz(context_chunks=chunks)
@@ -207,8 +251,10 @@ async def get_document_info():
     """Get information about loaded documents."""
     try:
         return {
-            "total_documents": embedding_manager.count(),
-            "message": "Document count retrieved successfully"
+            "total_documents": vector_store.count() if vector_store else 0,
+            "message": "Document count retrieved successfully",
+            "embedding_service_available": vector_store is not None,
+            "langchain_enabled": True
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
