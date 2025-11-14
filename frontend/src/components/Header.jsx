@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 
-const Header = ({ documentCount = 0 }) => {
+const Header = ({ documentCount = 0, onViewProgress, showProgress = false }) => {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
@@ -25,6 +25,25 @@ const Header = ({ documentCount = 0 }) => {
                 <span style={{ color: '#fff', fontSize: '14px' }}>
                   {user.email}
                 </span>
+                {onViewProgress && (
+                  <button
+                    onClick={onViewProgress}
+                    style={{
+                      padding: '6px 12px',
+                      background: showProgress ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      borderRadius: '6px',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+                    onMouseOut={(e) => e.target.style.background = showProgress ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)'}
+                  >
+                    {showProgress ? 'Hide Progress' : 'View Progress'}
+                  </button>
+                )}
                 <button
                   onClick={handleLogout}
                   style={{

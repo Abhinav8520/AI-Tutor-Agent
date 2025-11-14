@@ -1,4 +1,4 @@
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export const progressService = {
@@ -29,6 +29,72 @@ export const progressService = {
       return docRef.id;
     } catch (error) {
       console.error('Error saving quiz result:', error);
+      throw error;
+    }
+  },
+
+  // Get quiz history for a user
+  async getQuizHistory(userId) {
+    try {
+      if (!userId) {
+        throw new Error('User ID is required to fetch quiz history');
+      }
+
+      const q = query(
+        collection(db, 'quizResults'),
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const quizHistory = [];
+      
+      querySnapshot.forEach((doc) => {
+        quizHistory.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      return quizHistory;
+    } catch (error) {
+      console.error('Error fetching quiz history:', error);
+      throw error;
+    }
+  },
+
+  // Get quiz statistics for a user
+  async getQuizStatistics(userId) {
+    try {
+      if (!userId) {
+        throw new Error('User ID is required to fetch quiz statistics');
+      }
+
+      const quizHistory = await this.getQuizHistory(userId);
+
+      if (quizHistory.length === 0) {
+        return {
+          totalQuizzes: 0,
+          averageScore: 0,
+          bestScore: 0,
+          lastQuizDate: null
+        };
+      }
+
+      const totalQuizzes = quizHistory.length;
+      const totalPercentage = quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0);
+      const averageScore = Math.round(totalPercentage / totalQuizzes);
+      const bestScore = Math.max(...quizHistory.map(quiz => quiz.percentage));
+      const lastQuizDate = quizHistory[0]?.date || null;
+
+      return {
+        totalQuizzes,
+        averageScore,
+        bestScore,
+        lastQuizDate
+      };
+    } catch (error) {
+      console.error('Error calculating quiz statistics:', error);
       throw error;
     }
   }

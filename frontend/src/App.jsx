@@ -4,6 +4,7 @@ import Header from './components/Header';
 import FileUpload from './components/FileUpload';
 import SearchInterface from './components/SearchInterface';
 import QuizInterface from './components/QuizInterface';
+import ProgressDashboard from './components/ProgressDashboard';
 import AuthContainer from './components/Auth/AuthContainer';
 import { apiService } from './services/api';
 import './App.css';
@@ -21,6 +22,9 @@ function App() {
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [quizData, setQuizData] = useState(null);
   const [isCheckingAnswer, setIsCheckingAnswer] = useState(false);
+  
+  // Progress dashboard state
+  const [showProgress, setShowProgress] = useState(false);
 
   // Load initial document count
   useEffect(() => {
@@ -168,7 +172,11 @@ function App() {
   // Show main app if user is authenticated
   return (
     <div>
-      <Header documentCount={documentCount} />
+      <Header 
+        documentCount={documentCount} 
+        onViewProgress={() => setShowProgress(!showProgress)}
+        showProgress={showProgress}
+      />
       
       <div className="container">
         {/* Upload Message */}
@@ -179,6 +187,11 @@ function App() {
         )}
         
         <div className="main-content">
+          {/* Progress Dashboard Section */}
+          {showProgress && (
+            <ProgressDashboard onClose={() => setShowProgress(false)} />
+          )}
+          
           {/* File Upload Section */}
           <FileUpload 
             onUpload={handleFileUpload}
