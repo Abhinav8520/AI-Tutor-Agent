@@ -171,6 +171,26 @@ class LangChainVectorStore:
             return 0
         return self.vectorstore.index.ntotal if hasattr(self.vectorstore.index, 'ntotal') else 0
     
+    def get_retriever(self, top_k: int = 3, search_kwargs: Optional[Dict[str, Any]] = None):
+        """
+        Get a LangChain retriever from the vector store.
+        
+        Args:
+            top_k: Number of documents to retrieve
+            search_kwargs: Additional search parameters
+            
+        Returns:
+            LangChain retriever instance
+        """
+        if self.vectorstore is None:
+            raise ValueError("Vector store is not initialized. Please upload documents first.")
+        
+        search_kwargs = search_kwargs or {}
+        if 'k' not in search_kwargs:
+            search_kwargs['k'] = top_k
+        
+        return self.vectorstore.as_retriever(search_kwargs=search_kwargs)
+    
     def _save_vectorstore(self) -> None:
         """Save vector store to disk."""
         if self.vectorstore is None:

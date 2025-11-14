@@ -57,7 +57,7 @@ try:
     
     # Initialize RAG service if vector store is available
     if vector_store is not None:
-        rag_service = LangChainRAGService(vector_store, llm_tutor)
+        rag_service = LangChainRAGService(vector_store, llm_tutor, memory_manager)
     
     # Initialize quiz generator
     quiz_generator = QuizGenerator()
